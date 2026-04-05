@@ -76,6 +76,10 @@ export default function Triangle({
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<SVGSVGElement>) => {
       if (!draggingRef.current) return;
+      // Prevent page scroll while dragging on touch devices
+      if (e.pointerType === 'touch') {
+        e.preventDefault();
+      }
       const { x, y } = toLocal(e.clientX, e.clientY);
       if (isPointInTriangle(x, y)) {
         onMoveProject(draggingRef.current, x, y);
@@ -106,6 +110,7 @@ export default function Triangle({
         maxHeight: '75vh',
         cursor: waitingId ? 'crosshair' : 'default',
         userSelect: 'none',
+        touchAction: 'none',
       }}
       onClick={handleClick}
       onPointerMove={handlePointerMove}
@@ -286,6 +291,14 @@ export default function Triangle({
                 style={{ cursor: 'grab' }}
                 onPointerDown={(e) => handlePointerDown(e, p.id)}
               >
+                {/* Invisible touch target (min 44px) */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={22}
+                  fill="transparent"
+                  stroke="none"
+                />
                 <circle
                   cx={p.x}
                   cy={p.y}

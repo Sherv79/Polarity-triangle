@@ -8,6 +8,7 @@ interface ChatPanelProps {
   messages: ChatMessage[];
   onMessagesChange: (projectId: string, messages: ChatMessage[]) => void;
   onAiAnalysis: (projectId: string, position: AiPosition) => void;
+  onReset: (projectId: string) => void;
 }
 
 let msgId = 1;
@@ -22,6 +23,7 @@ export default function ChatPanel({
   messages,
   onMessagesChange,
   onAiAnalysis,
+  onReset,
 }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -149,9 +151,48 @@ export default function ChatPanel({
           KI-Sparring
         </span>
         {projectName && (
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', flex: 1 }}>
             — {projectName}
           </span>
+        )}
+        {projectId && messages.length > 0 && (
+          <button
+            onClick={() => {
+              if (confirm('Chat und KI-Einschätzung zurücksetzen?')) {
+                onReset(projectId);
+              }
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              padding: '2px 4px',
+              lineHeight: 1,
+              marginLeft: 'auto',
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'color 150ms ease',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
+            aria-label="Neues Gespräch"
+            title="Neues Gespräch"
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+            </svg>
+          </button>
         )}
       </div>
 

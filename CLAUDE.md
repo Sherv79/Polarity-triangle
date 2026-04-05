@@ -40,7 +40,8 @@ src/
 │   ├── AddProject.tsx      # Project creation form with color picker
 │   ├── ProjectList.tsx     # Scrollable list of placed projects
 │   ├── AnalysisPanel.tsx   # Barycentric analysis + heat level + AI comparison
-│   └── ChatPanel.tsx       # KI-Sparring chat with Anthropic API integration
+│   ├── ChatPanel.tsx       # KI-Sparring chat with Anthropic API integration
+│   └── IntroOverlay.tsx    # First-visit onboarding overlay (localStorage gated)
 ├── utils/
 │   └── triangle.ts         # Math: barycentric coords, point-in-triangle, heat levels, baryToCartesian
 ├── prompts.ts              # System prompt for AI sparring
@@ -60,6 +61,10 @@ api/
 - **Project-specific chat**: Each project has its own chat history
 - **PNG export**: Downloads the triangle as a 1360×1080 PNG with resolved CSS variables
 - **Drag & drop**: Placed projects can be repositioned within the triangle
+- **Chat reset**: Per-project reset button clears chat history and AI placement
+- **Toast notifications**: Temporary banner when AI placement appears
+- **Intro overlay**: First-visit onboarding with 3-step guide (localStorage gated)
+- **Mobile touch**: touch-action:none on SVG, 44px hit targets, scroll prevention during drag
 
 ## AI Chat Flow
 
@@ -82,3 +87,4 @@ api/
 - Streaming AI responses
 - Session persistence (localStorage or DB)
 - Multi-user workshop mode
+- Accessible keyboard navigation for triangle placement

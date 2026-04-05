@@ -8,6 +8,7 @@ import AddProject from './components/AddProject';
 import ProjectList from './components/ProjectList';
 import AnalysisPanel from './components/AnalysisPanel';
 import ChatPanel from './components/ChatPanel';
+import IntroOverlay from './components/IntroOverlay';
 
 const DEFAULT_POLE_LABELS: PoleLabels = {
   eg: { name: 'Entscheidungsgrundlagen', subtitle: 'Worauf stützen wir Entscheidungen?' },
@@ -59,10 +60,22 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [colorIndex, setColorIndex] = useState(0);
   const [poleLabels, setPoleLabels] = useState<PoleLabels>(DEFAULT_POLE_LABELS);
+  const [toast, setToast] = useState<{ text: string; phase: 'enter' | 'visible' | 'exit' } | null>(null);
   const svgContainerRef = useRef<HTMLDivElement>(null);
 
   const waitingProject = projects.find((p) => p.status === 'waiting');
   const selectedProject = projects.find((p) => p.id === selectedId && p.status === 'placed');
+
+  const showToast = useCallback((text: string) => {
+    setToast({ text, phase: 'enter' });
+    requestAnimationFrame(() => {
+      setToast({ text, phase: 'visible' });
+    });
+    setTimeout(() => {
+      setToast((t) => (t ? { ...t, phase: 'exit' } : null));
+      setTimeout(() => setToast(null), 300);
+    }, 3000);
+  }, []);
 
   const handleAdd = useCallback((name: string, color: string) => {
     const id = `p-${nextId}`;
@@ -107,6 +120,13 @@ export default function App() {
   const handleAiAnalysis = useCallback((projectId: string, position: AiPosition) => {
     setProjects((prev) =>
       prev.map((p) => (p.id === projectId ? { ...p, aiPosition: position } : p))
+    );
+    showToast('KI-Einschätzung wurde im Dreieck platziert');
+  }, [showToast]);
+
+  const handleChatReset = useCallback((projectId: string) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, chatMessages: [], aiPosition: null } : p))
     );
   }, []);
 
@@ -173,9 +193,31 @@ export default function App() {
         {/* Triangle area */}
         <div
           ref={svgContainerRef}
-          style={{ flex: '0 0 60%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          style={{ flex: '0 0 60%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}
           className="triangle-area"
         >
+          {toast && (
+            <div
+              className={`toast-${toast.phase}`}
+              style={{
+                position: 'absolute',
+                top: 12,
+                left: '50%',
+                transform: `translateX(-50%)${toast.phase === 'enter' || toast.phase === 'exit' ? ' translateY(-8px)' : ''}`,
+                backgroundColor: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '8px 16px',
+                fontSize: 12,
+                zIndex: 10,
+                pointerEvents: 'none',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {toast.text}
+            </div>
+          )}
           <Triangle
             projects={projects}
             selectedId={selectedId}
@@ -212,10 +254,12 @@ export default function App() {
             messages={selectedProject?.chatMessages ?? []}
             onMessagesChange={handleChatMessagesChange}
             onAiAnalysis={handleAiAnalysis}
+            onReset={handleChatReset}
           />
         </div>
       </main>
       <Footer />
+      <IntroOverlay />
 
       <style>{`
         @media (max-width: 768px) {
