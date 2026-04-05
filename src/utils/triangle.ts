@@ -92,3 +92,59 @@ export function getHeatAdvice(level: HeatLevel): string {
       return 'Geringe Paradoxie-Intensität — Standard-Governance ausreichend.';
   }
 }
+
+/**
+ * Convert barycentric coordinates (percentages) to cartesian coordinates
+ */
+export function baryToCartesian(eg: number, zu: number, st: number): { x: number; y: number } {
+  const total = eg + zu + st;
+  const wEg = eg / total;
+  const wZu = zu / total;
+  const wSt = st / total;
+  const x = wEg * VERTICES.A.x + wZu * VERTICES.B.x + wSt * VERTICES.C.x;
+  const y = wEg * VERTICES.A.y + wZu * VERTICES.B.y + wSt * VERTICES.C.y;
+  return { x, y };
+}
+
+/**
+ * Parse AI analysis JSON from chat response text
+ */
+const ANALYSIS_REGEX = /\{[^{}]*"entscheidungsgrundlagen"\s*:\s*\d+[^{}]*\}/;
+
+export function parseAnalysis(text: string): {
+  eg: number;
+  zu: number;
+  st: number;
+  intensitaet: 'gering' | 'mittel' | 'hoch' | 'sehr_hoch';
+} | null {
+  const match = text.match(ANALYSIS_REGEX);
+  if (!match) return null;
+  try {
+    const obj = JSON.parse(match[0]);
+    if (
+      typeof obj.entscheidungsgrundlagen === 'number' &&
+      typeof obj.zurechnung === 'number' &&
+      typeof obj.steuerbarkeit === 'number'
+    ) {
+      return {
+        eg: obj.entscheidungsgrundlagen,
+        zu: obj.zurechnung,
+        st: obj.steuerbarkeit,
+        intensitaet: obj.intensitaet || 'mittel',
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+/**
+ * Strip JSON analysis block from display text
+ */
+export function stripAnalysisJson(text: string): string {
+  return text
+    .replace(/```json\s*\{[^{}]*"entscheidungsgrundlagen"[^{}]*\}\s*```/g, '')
+    .replace(ANALYSIS_REGEX, '')
+    .trim();
+}

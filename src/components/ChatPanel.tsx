@@ -1,18 +1,30 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, AiPosition } from '../types';
+import { baryToCartesian, stripAnalysisJson } from '../utils/triangle';
+
+interface ChatPanelProps {
+  projectId: string | null;
+  projectName: string | null;
+  messages: ChatMessage[];
+  onMessagesChange: (projectId: string, messages: ChatMessage[]) => void;
+  onAiAnalysis: (projectId: string, position: AiPosition) => void;
+}
 
 let msgId = 1;
-
-const BOT_REPLY =
-  'KI-Analyse wird in einer zukünftigen Version verfügbar sein. Dieses Panel wird dann Ihr Projekt analysieren und eine Einschätzung der Paradoxie-Intensität geben.';
 
 function formatTime(d: Date): string {
   return d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function ChatPanel() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+export default function ChatPanel({
+  projectId,
+  projectName,
+  messages,
+  onMessagesChange,
+  onAiAnalysis,
+}: ChatPanelProps) {
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -23,33 +35,87 @@ export default function ChatPanel() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, scrollToBottom]);
+  }, [messages, isLoading, scrollToBottom]);
 
-  const send = useCallback(() => {
+  const send = useCallback(async () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || !projectId || isLoading) return;
 
     const userMsg: ChatMessage = {
       id: `msg-${msgId++}`,
       role: 'user',
-      text,
+      content: text,
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    onMessagesChange(projectId, updatedMessages);
     setInput('');
+    setIsLoading(true);
 
-    // Simulate bot reply after 1s
-    setTimeout(() => {
-      const botMsg: ChatMessage = {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 30000);
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updatedMessages.map((m) => ({ role: m.role, content: m.content })),
+          projectName,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        throw new Error(`API error: ${res.status}`);
+      }
+
+      const data = await res.json();
+      const displayContent = stripAnalysisJson(data.content);
+
+      const assistantMsg: ChatMessage = {
         id: `msg-${msgId++}`,
-        role: 'bot',
-        text: BOT_REPLY,
+        role: 'assistant',
+        content: displayContent,
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, botMsg]);
-    }, 1000);
-  }, [input]);
+
+      const withAssistant = [...updatedMessages, { ...assistantMsg, content: data.content }];
+      const displayMessages = [...updatedMessages, assistantMsg];
+      // Store full content (with JSON) for API context, display stripped version
+      onMessagesChange(projectId, withAssistant);
+
+      // Check for analysis
+      if (data.analysis && projectId) {
+        const { entscheidungsgrundlagen: eg, zurechnung: zu, steuerbarkeit: st, intensitaet } = data.analysis;
+        const pos = baryToCartesian(eg, zu, st);
+        onAiAnalysis(projectId, {
+          x: pos.x,
+          y: pos.y,
+          eg,
+          zu,
+          st,
+          intensitaet: intensitaet || 'mittel',
+        });
+      }
+
+      // Update display — use displayMessages for rendering but withAssistant was already saved
+      void displayMessages; // display is handled via messages prop
+    } catch (err) {
+      const errorMsg: ChatMessage = {
+        id: `msg-${msgId++}`,
+        role: 'assistant',
+        content: 'Entschuldigung, es gab einen Fehler bei der Analyse. Bitte versuchen Sie es erneut.',
+        timestamp: new Date(),
+      };
+      onMessagesChange(projectId, [...updatedMessages, errorMsg]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [input, projectId, projectName, messages, isLoading, onMessagesChange, onAiAnalysis]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -57,6 +123,11 @@ export default function ChatPanel() {
       send();
     }
   };
+
+  // Render messages with stripped JSON for display
+  const displayMessages = messages.map((m) =>
+    m.role === 'assistant' ? { ...m, content: stripAnalysisJson(m.content) } : m
+  );
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -77,6 +148,11 @@ export default function ChatPanel() {
         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
           KI-Sparring
         </span>
+        {projectName && (
+          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
+            — {projectName}
+          </span>
+        )}
       </div>
 
       {/* Chat area */}
@@ -94,7 +170,7 @@ export default function ChatPanel() {
           transition: 'background-color 150ms ease',
         }}
       >
-        {messages.length === 0 ? (
+        {!projectId ? (
           <div
             style={{
               flex: 1,
@@ -108,55 +184,92 @@ export default function ChatPanel() {
               padding: '0 16px',
             }}
           >
-            Beschreiben Sie ein KI-Projekt und erhalten Sie eine Einschätzung, welche Paradoxien
-            besonders relevant sind.
+            Wählen Sie ein Projekt aus, um das KI-Sparring zu starten.
+          </div>
+        ) : displayMessages.length === 0 ? (
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'var(--text-tertiary)',
+              fontSize: 12,
+              textAlign: 'center',
+              lineHeight: 1.5,
+              padding: '0 16px',
+            }}
+          >
+            Beschreiben Sie das Projekt „{projectName}" und erhalten Sie eine Einschätzung, welche
+            Paradoxien besonders relevant sind.
           </div>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
-              }}
-            >
+          <>
+            {displayMessages.map((msg) => (
               <div
+                key={msg.id}
                 style={{
-                  maxWidth: '85%',
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  fontSize: 12,
-                  lineHeight: 1.5,
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  ...(msg.role === 'user'
-                    ? {
-                        backgroundColor: 'var(--accent-primary)',
-                        color: '#FFFFFF',
-                        borderBottomRightRadius: 2,
-                      }
-                    : {
-                        backgroundColor: 'var(--bg-secondary)',
-                        color: 'var(--text-primary)',
-                        borderBottomLeftRadius: 2,
-                      }),
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start',
                 }}
               >
-                {msg.text}
+                <div
+                  style={{
+                    maxWidth: '85%',
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    ...(msg.role === 'user'
+                      ? {
+                          backgroundColor: 'var(--accent-primary)',
+                          color: '#FFFFFF',
+                          borderBottomRightRadius: 2,
+                        }
+                      : {
+                          backgroundColor: 'var(--bg-secondary)',
+                          color: 'var(--text-primary)',
+                          borderBottomLeftRadius: 2,
+                        }),
+                  }}
+                >
+                  {msg.content}
+                </div>
+                <span
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--text-tertiary)',
+                    marginTop: 2,
+                    paddingInline: 4,
+                  }}
+                >
+                  {formatTime(msg.timestamp)}
+                </span>
               </div>
-              <span
-                style={{
-                  fontSize: 10,
-                  color: 'var(--text-tertiary)',
-                  marginTop: 2,
-                  paddingInline: 4,
-                }}
-              >
-                {formatTime(msg.timestamp)}
-              </span>
-            </div>
-          ))
+            ))}
+            {isLoading && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div
+                  style={{
+                    padding: '10px 16px',
+                    borderRadius: 8,
+                    borderBottomLeftRadius: 2,
+                    backgroundColor: 'var(--bg-secondary)',
+                    display: 'flex',
+                    gap: 4,
+                    alignItems: 'center',
+                  }}
+                >
+                  <span className="loading-dot" style={{ animationDelay: '0ms' }} />
+                  <span className="loading-dot" style={{ animationDelay: '150ms' }} />
+                  <span className="loading-dot" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -166,7 +279,8 @@ export default function ChatPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Projekt beschreiben..."
+          placeholder={projectId ? 'Projekt beschreiben...' : 'Zuerst ein Projekt auswählen...'}
+          disabled={!projectId || isLoading}
           rows={2}
           style={{
             flex: 1,
@@ -183,6 +297,7 @@ export default function ChatPanel() {
             outline: 'none',
             transition: 'border-color 150ms ease',
             lineHeight: 1.4,
+            opacity: !projectId ? 0.5 : 1,
           }}
           onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--accent-primary)')}
           onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--border)')}
@@ -190,7 +305,7 @@ export default function ChatPanel() {
         <button
           className="btn-primary"
           onClick={send}
-          disabled={!input.trim()}
+          disabled={!input.trim() || !projectId || isLoading}
           style={{ padding: '8px 10px', lineHeight: 1, flexShrink: 0 }}
           aria-label="Senden"
         >

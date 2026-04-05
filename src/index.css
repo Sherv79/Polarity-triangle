@@ -137,6 +137,22 @@ input[type="text"]:focus {
   border-color: var(--accent-primary);
 }
 
+/* ── Loading dots animation ── */
+
+.loading-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-tertiary);
+  animation: loading-pulse 1s ease-in-out infinite;
+}
+
+@keyframes loading-pulse {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+
 /* ── Scrollbar ── */
 
 ::-webkit-scrollbar {

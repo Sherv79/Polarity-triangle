@@ -242,45 +242,80 @@ export default function Triangle({
           width={240}
         />
 
-        {/* Project dots */}
+        {/* Project dots + AI positions */}
         {placedProjects.map((p) => {
           const isSelected = p.id === selectedId;
           const r = isSelected ? 18 : 15;
           return (
-            <g
-              key={p.id}
-              style={{ cursor: 'grab' }}
-              onPointerDown={(e) => handlePointerDown(e, p.id)}
-            >
-              <circle
-                cx={p.x}
-                cy={p.y}
-                r={r}
-                fill={p.color}
-                opacity={isSelected ? 0.9 : 0.8}
-                stroke="#FFFFFF"
-                strokeWidth={isSelected ? 2.5 : 2}
-              />
-              <text
-                x={p.x}
-                y={p.y + 4.5}
-                textAnchor="middle"
-                fontSize={12}
-                fontWeight={600}
-                fill="#FFFFFF"
-                pointerEvents="none"
+            <g key={p.id}>
+              {/* AI position (dashed circle + connection line) */}
+              {p.aiPosition && (
+                <>
+                  <line
+                    x1={p.x}
+                    y1={p.y}
+                    x2={p.aiPosition.x}
+                    y2={p.aiPosition.y}
+                    stroke={p.color}
+                    strokeWidth={1}
+                    strokeDasharray="4 4"
+                    opacity={0.5}
+                  />
+                  <circle
+                    cx={p.aiPosition.x}
+                    cy={p.aiPosition.y}
+                    r={15}
+                    fill="none"
+                    stroke={p.color}
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                  />
+                  <text
+                    x={p.aiPosition.x + 20}
+                    y={p.aiPosition.y + 4}
+                    fontSize={9}
+                    fill="var(--text-secondary)"
+                    pointerEvents="none"
+                  >
+                    KI
+                  </text>
+                </>
+              )}
+              {/* Manual position (solid circle) */}
+              <g
+                style={{ cursor: 'grab' }}
+                onPointerDown={(e) => handlePointerDown(e, p.id)}
               >
-                {p.number}
-              </text>
-              <text
-                x={p.x + r + 6}
-                y={p.y + 4}
-                fontSize={11}
-                fill="var(--text-secondary)"
-                pointerEvents="none"
-              >
-                {p.name}
-              </text>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={r}
+                  fill={p.color}
+                  opacity={isSelected ? 0.9 : 0.8}
+                  stroke="#FFFFFF"
+                  strokeWidth={isSelected ? 2.5 : 2}
+                />
+                <text
+                  x={p.x}
+                  y={p.y + 4.5}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fontWeight={600}
+                  fill="#FFFFFF"
+                  pointerEvents="none"
+                >
+                  {p.number}
+                </text>
+                <text
+                  x={p.x + r + 6}
+                  y={p.y + 4}
+                  fontSize={11}
+                  fill="var(--text-secondary)"
+                  pointerEvents="none"
+                >
+                  {p.name}
+                </text>
+              </g>
             </g>
           );
         })}

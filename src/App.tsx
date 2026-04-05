@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import type { Project, PoleLabels } from './types';
+import { useState, useCallback, useRef } from 'react';
+import type { Project, PoleLabels, ChatMessage, AiPosition } from './types';
 import { PROJECT_COLORS } from './utils/triangle';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -17,20 +17,59 @@ const DEFAULT_POLE_LABELS: PoleLabels = {
 
 let nextId = 1;
 
+// Resolve CSS variables to actual color values for SVG export
+function resolveVar(varStr: string): string {
+  if (!varStr.startsWith('var(')) return varStr;
+  const name = varStr.replace(/^var\(/, '').replace(/\)$/, '');
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || varStr;
+}
+
+function resolveCssVarsInSvg(svgEl: SVGSVGElement): SVGSVGElement {
+  const clone = svgEl.cloneNode(true) as SVGSVGElement;
+  const allEls = clone.querySelectorAll('*');
+
+  const varProps = ['fill', 'stroke', 'color'];
+  const resolve = (val: string) => {
+    if (!val) return val;
+    return val.replace(/var\(--[^)]+\)/g, (m) => resolveVar(m));
+  };
+
+  allEls.forEach((el) => {
+    varProps.forEach((prop) => {
+      const attr = el.getAttribute(prop);
+      if (attr && attr.includes('var(')) {
+        el.setAttribute(prop, resolve(attr));
+      }
+    });
+    // Also resolve inline styles
+    const style = el.getAttribute('style');
+    if (style && style.includes('var(')) {
+      el.setAttribute('style', resolve(style));
+    }
+  });
+
+  // Remove foreignObject elements (editable label inputs don't render on canvas)
+  clone.querySelectorAll('foreignObject').forEach((fo) => fo.remove());
+
+  return clone;
+}
+
 export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [colorIndex, setColorIndex] = useState(0);
   const [poleLabels, setPoleLabels] = useState<PoleLabels>(DEFAULT_POLE_LABELS);
+  const svgContainerRef = useRef<HTMLDivElement>(null);
 
   const waitingProject = projects.find((p) => p.status === 'waiting');
+  const selectedProject = projects.find((p) => p.id === selectedId && p.status === 'placed');
 
   const handleAdd = useCallback((name: string, color: string) => {
     const id = `p-${nextId}`;
     const number = nextId++;
     setProjects((prev) => [
       ...prev.filter((p) => p.status !== 'waiting'),
-      { id, name, color, number, x: 0, y: 0, status: 'waiting' },
+      { id, name, color, number, x: 0, y: 0, status: 'waiting', aiPosition: null, chatMessages: [] },
     ]);
     setColorIndex((i) => (i + 1) % PROJECT_COLORS.length);
   }, []);
@@ -59,11 +98,69 @@ export default function App() {
     setSelectedId(null);
   }, []);
 
-  const selectedProject = projects.find((p) => p.id === selectedId && p.status === 'placed');
+  const handleChatMessagesChange = useCallback((projectId: string, messages: ChatMessage[]) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, chatMessages: messages } : p))
+    );
+  }, []);
+
+  const handleAiAnalysis = useCallback((projectId: string, position: AiPosition) => {
+    setProjects((prev) =>
+      prev.map((p) => (p.id === projectId ? { ...p, aiPosition: position } : p))
+    );
+  }, []);
+
+  const handleExportPng = useCallback(() => {
+    const svgEl = svgContainerRef.current?.querySelector('svg');
+    if (!svgEl) return;
+
+    const resolved = resolveCssVarsInSvg(svgEl);
+    resolved.setAttribute('width', '1360');
+    resolved.setAttribute('height', '1080');
+    resolved.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+    // Add font + background
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+      text { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+    `;
+    resolved.insertBefore(style, resolved.firstChild);
+
+    // Add background rect
+    const bgColor = resolveVar('var(--bg-primary)');
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('width', '100%');
+    bg.setAttribute('height', '100%');
+    bg.setAttribute('fill', bgColor);
+    resolved.insertBefore(bg, resolved.firstChild);
+
+    const serializer = new XMLSerializer();
+    const svgStr = serializer.serializeToString(resolved);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1360;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(url);
+
+      const link = document.createElement('a');
+      link.download = 'Polarity-Dreieck.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+    img.src = url;
+  }, []);
 
   return (
     <>
-      <Header />
+      <Header onExportPng={handleExportPng} />
       <main
         style={{
           flex: 1,
@@ -75,6 +172,7 @@ export default function App() {
       >
         {/* Triangle area */}
         <div
+          ref={svgContainerRef}
           style={{ flex: '0 0 60%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           className="triangle-area"
         >
@@ -108,7 +206,13 @@ export default function App() {
             onDelete={handleDelete}
           />
           {selectedProject && <AnalysisPanel project={selectedProject} poleLabels={poleLabels} />}
-          <ChatPanel />
+          <ChatPanel
+            projectId={selectedProject?.id ?? null}
+            projectName={selectedProject?.name ?? null}
+            messages={selectedProject?.chatMessages ?? []}
+            onMessagesChange={handleChatMessagesChange}
+            onAiAnalysis={handleAiAnalysis}
+          />
         </div>
       </main>
       <Footer />
