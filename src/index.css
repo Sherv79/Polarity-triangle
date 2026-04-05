@@ -1,0 +1,153 @@
+@import "tailwindcss";
+
+/* ── Design System: CSS Custom Properties ── */
+
+:root {
+  --bg-primary: #0A0A0B;
+  --bg-secondary: #1A1A1F;
+  --bg-tertiary: #222228;
+  --border: #2A2A30;
+  --text-primary: #E8E8EA;
+  --text-secondary: #8A8A92;
+  --text-tertiary: #5A5A62;
+  --accent-primary: #2F779E;
+  --accent-secondary: #022D2B;
+
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F7F7F8;
+  --bg-tertiary: #EFEFEF;
+  --border: #E5E5E7;
+  --text-primary: #1A1A1F;
+  --text-secondary: #6B6B73;
+  --text-tertiary: #9A9AA2;
+  --accent-primary: #2F779E;
+  --accent-secondary: #022D2B;
+
+  color-scheme: light;
+}
+
+/* ── Base Styles ── */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 150ms ease, color 150ms ease;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Utility Classes ── */
+
+.card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.btn-primary:hover {
+  opacity: 0.85;
+}
+
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.btn-secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--text-tertiary);
+}
+
+.btn-danger {
+  background-color: transparent;
+  color: #E24B4A;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 150ms ease, border-color 150ms ease;
+}
+
+.btn-danger:hover {
+  border-color: #E24B4A;
+}
+
+input[type="text"] {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  outline: none;
+  width: 100%;
+  transition: border-color 150ms ease;
+}
+
+input[type="text"]::placeholder {
+  color: var(--text-tertiary);
+}
+
+input[type="text"]:focus {
+  border-color: var(--accent-primary);
+}
+
+/* ── Scrollbar ── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
