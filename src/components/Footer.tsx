@@ -12,7 +12,7 @@ export default function Footer() {
         transition: 'background-color 150ms ease, border-color 150ms ease',
       }}
     >
-      <div>Paradoxie-Dreieck | Workshop-Instrument zur Verortung von KI-Projekten</div>
+      <div>Polarity-Dreieck | Workshop-Instrument zur Verortung von KI-Projekten</div>
       <div>Konzept: Prof. Dr. Thomas Schumacher, osb international</div>
     </footer>
   );

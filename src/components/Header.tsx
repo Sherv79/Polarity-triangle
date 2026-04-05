@@ -14,7 +14,7 @@ export default function Header() {
       }}
     >
       <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
-        Paradoxie-Dreieck
+        Polarity-Dreieck
       </span>
       <ThemeToggle />
     </header>

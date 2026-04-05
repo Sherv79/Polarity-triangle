@@ -1,28 +1,32 @@
 import { useCallback, useRef } from 'react';
-import type { Project } from '../types';
+import type { Project, PoleLabels } from '../types';
 import { VERTICES, VERTEX_COLORS, HEAT_ZONES, isPointInTriangle } from '../utils/triangle';
+import EditableLabel from './EditableLabel';
 
 interface TriangleProps {
   projects: Project[];
   selectedId: string | null;
   waitingId: string | null;
+  poleLabels: PoleLabels;
   onPlaceProject: (id: string, x: number, y: number) => void;
   onSelectProject: (id: string | null) => void;
   onMoveProject: (id: string, x: number, y: number) => void;
+  onPoleLabelsChange: (labels: PoleLabels) => void;
 }
 
 export default function Triangle({
   projects,
   selectedId,
   waitingId,
+  poleLabels,
   onPlaceProject,
   onSelectProject,
   onMoveProject,
+  onPoleLabelsChange,
 }: TriangleProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const draggingRef = useRef<string | null>(null);
 
-  // Convert screen coordinates to local SVG coordinates
   const toLocal = useCallback((clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
@@ -40,7 +44,6 @@ export default function Triangle({
       if (draggingRef.current) return;
       const { x, y } = toLocal(e.clientX, e.clientY);
 
-      // Check if clicking on an existing project
       const clicked = projects.find(
         (p) => p.status === 'placed' && Math.hypot(p.x - x, p.y - y) < 20
       );
@@ -49,13 +52,11 @@ export default function Triangle({
         return;
       }
 
-      // Place waiting project
       if (waitingId && isPointInTriangle(x, y)) {
         onPlaceProject(waitingId, x, y);
         return;
       }
 
-      // Deselect
       onSelectProject(null);
     },
     [projects, waitingId, toLocal, onPlaceProject, onSelectProject]
@@ -87,6 +88,13 @@ export default function Triangle({
     draggingRef.current = null;
   }, []);
 
+  const updateLabel = (pole: keyof PoleLabels, field: 'name' | 'subtitle', value: string) => {
+    onPoleLabelsChange({
+      ...poleLabels,
+      [pole]: { ...poleLabels[pole], [field]: value },
+    });
+  };
+
   const placedProjects = projects.filter((p) => p.status === 'placed');
 
   return (
@@ -105,7 +113,7 @@ export default function Triangle({
       onPointerLeave={handlePointerUp}
     >
       <g id="triangle-group" transform="translate(340, 260)">
-        {/* Heat zones (concentric circles around centroid) */}
+        {/* Heat zones */}
         {HEAT_ZONES.map((zone) => (
           <circle
             key={zone.radius}
@@ -170,72 +178,69 @@ export default function Triangle({
           Maximale Herausforderung
         </text>
 
-        {/* Vertex labels */}
+        {/* Vertex labels — editable */}
         {/* Top: Entscheidungsgrundlagen */}
         <circle cx={VERTICES.A.x} cy={VERTICES.A.y} r={5} fill={VERTEX_COLORS.eg} />
-        <text
+        <EditableLabel
           x={VERTICES.A.x}
-          y={VERTICES.A.y - 24}
-          textAnchor="middle"
+          y={VERTICES.A.y - 20}
+          text={poleLabels.eg.name}
+          onChange={(v) => updateLabel('eg', 'name', v)}
           fontSize={12}
           fontWeight={600}
           fill={VERTEX_COLORS.eg}
-        >
-          Entscheidungsgrundlagen
-        </text>
-        <text
+        />
+        <EditableLabel
           x={VERTICES.A.x}
-          y={VERTICES.A.y - 10}
-          textAnchor="middle"
+          y={VERTICES.A.y - 6}
+          text={poleLabels.eg.subtitle}
+          onChange={(v) => updateLabel('eg', 'subtitle', v)}
           fontSize={9}
           fill="var(--text-tertiary)"
-        >
-          Worauf stützen wir Entscheidungen?
-        </text>
+          width={240}
+        />
 
         {/* Bottom-right: Zurechnung */}
         <circle cx={VERTICES.B.x} cy={VERTICES.B.y} r={5} fill={VERTEX_COLORS.zu} />
-        <text
+        <EditableLabel
           x={VERTICES.B.x}
-          y={VERTICES.B.y + 24}
-          textAnchor="middle"
+          y={VERTICES.B.y + 28}
+          text={poleLabels.zu.name}
+          onChange={(v) => updateLabel('zu', 'name', v)}
           fontSize={12}
           fontWeight={600}
           fill={VERTEX_COLORS.zu}
-        >
-          Zurechnung
-        </text>
-        <text
+        />
+        <EditableLabel
           x={VERTICES.B.x}
-          y={VERTICES.B.y + 38}
-          textAnchor="middle"
+          y={VERTICES.B.y + 42}
+          text={poleLabels.zu.subtitle}
+          onChange={(v) => updateLabel('zu', 'subtitle', v)}
           fontSize={9}
           fill="var(--text-tertiary)"
-        >
-          Wer steht für das Ergebnis ein?
-        </text>
+          width={240}
+        />
 
         {/* Bottom-left: Steuerbarkeit */}
         <circle cx={VERTICES.C.x} cy={VERTICES.C.y} r={5} fill={VERTEX_COLORS.st} />
-        <text
+        <EditableLabel
           x={VERTICES.C.x}
-          y={VERTICES.C.y + 24}
-          textAnchor="middle"
+          y={VERTICES.C.y + 28}
+          text={poleLabels.st.name}
+          onChange={(v) => updateLabel('st', 'name', v)}
           fontSize={12}
           fontWeight={600}
           fill={VERTEX_COLORS.st}
-        >
-          Steuerbarkeit
-        </text>
-        <text
+        />
+        <EditableLabel
           x={VERTICES.C.x}
-          y={VERTICES.C.y + 38}
-          textAnchor="middle"
+          y={VERTICES.C.y + 42}
+          text={poleLabels.st.subtitle}
+          onChange={(v) => updateLabel('st', 'subtitle', v)}
           fontSize={9}
           fill="var(--text-tertiary)"
-        >
-          Bleibt die Lernfähigkeit erhalten?
-        </text>
+          width={240}
+        />
 
         {/* Project dots */}
         {placedProjects.map((p) => {

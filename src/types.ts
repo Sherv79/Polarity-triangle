@@ -17,3 +17,16 @@ export interface BarycentricCoords {
 export type HeatLevel = 'Sehr hoch' | 'Hoch' | 'Mittel' | 'Gering';
 
 export type Theme = 'light' | 'dark';
+
+export interface PoleLabels {
+  eg: { name: string; subtitle: string };
+  zu: { name: string; subtitle: string };
+  st: { name: string; subtitle: string };
+}
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'bot';
+  text: string;
+  timestamp: Date;
+}

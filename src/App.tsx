@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Project } from './types';
+import type { Project, PoleLabels } from './types';
 import { PROJECT_COLORS } from './utils/triangle';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -7,6 +7,13 @@ import Triangle from './components/Triangle';
 import AddProject from './components/AddProject';
 import ProjectList from './components/ProjectList';
 import AnalysisPanel from './components/AnalysisPanel';
+import ChatPanel from './components/ChatPanel';
+
+const DEFAULT_POLE_LABELS: PoleLabels = {
+  eg: { name: 'Entscheidungsgrundlagen', subtitle: 'Worauf stützen wir Entscheidungen?' },
+  zu: { name: 'Zurechnung', subtitle: 'Wer steht für das Ergebnis ein?' },
+  st: { name: 'Steuerbarkeit', subtitle: 'Bleibt die Lernfähigkeit erhalten?' },
+};
 
 let nextId = 1;
 
@@ -14,15 +21,14 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [colorIndex, setColorIndex] = useState(0);
+  const [poleLabels, setPoleLabels] = useState<PoleLabels>(DEFAULT_POLE_LABELS);
 
-  // The "waiting" project is one that has been created but not yet placed
   const waitingProject = projects.find((p) => p.status === 'waiting');
 
   const handleAdd = useCallback((name: string, color: string) => {
     const id = `p-${nextId}`;
     const number = nextId++;
     setProjects((prev) => [
-      // Remove any existing waiting project
       ...prev.filter((p) => p.status !== 'waiting'),
       { id, name, color, number, x: 0, y: 0, status: 'waiting' },
     ]);
@@ -76,9 +82,11 @@ export default function App() {
             projects={projects}
             selectedId={selectedId}
             waitingId={waitingProject?.id ?? null}
+            poleLabels={poleLabels}
             onPlaceProject={handlePlace}
             onSelectProject={setSelectedId}
             onMoveProject={handleMove}
+            onPoleLabelsChange={setPoleLabels}
           />
         </div>
 
@@ -99,7 +107,8 @@ export default function App() {
             onSelect={setSelectedId}
             onDelete={handleDelete}
           />
-          {selectedProject && <AnalysisPanel project={selectedProject} />}
+          {selectedProject && <AnalysisPanel project={selectedProject} poleLabels={poleLabels} />}
+          <ChatPanel />
         </div>
       </main>
       <Footer />

@@ -1,19 +1,20 @@
-import type { Project } from '../types';
+import type { Project, PoleLabels } from '../types';
 import { cartesianToBary, getHeatLevel, getHeatAdvice, VERTEX_COLORS } from '../utils/triangle';
 
 interface AnalysisPanelProps {
   project: Project;
+  poleLabels: PoleLabels;
 }
 
-export default function AnalysisPanel({ project }: AnalysisPanelProps) {
+export default function AnalysisPanel({ project, poleLabels }: AnalysisPanelProps) {
   const bary = cartesianToBary(project.x, project.y);
   const heat = getHeatLevel(project.x, project.y);
   const advice = getHeatAdvice(heat.level);
 
   const meters = [
-    { label: 'Entscheidungsgrundlagen', value: bary.eg, color: VERTEX_COLORS.eg },
-    { label: 'Zurechnung', value: bary.zu, color: VERTEX_COLORS.zu },
-    { label: 'Steuerbarkeit', value: bary.st, color: VERTEX_COLORS.st },
+    { label: poleLabels.eg.name, value: bary.eg, color: VERTEX_COLORS.eg },
+    { label: poleLabels.zu.name, value: bary.zu, color: VERTEX_COLORS.zu },
+    { label: poleLabels.st.name, value: bary.st, color: VERTEX_COLORS.st },
   ];
 
   return (

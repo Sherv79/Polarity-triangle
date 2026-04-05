@@ -1,4 +1,4 @@
-# Paradoxie-Dreieck
+# Polarity-Dreieck
 
 Interactive workshop tool for organizational consultants. Participants place AI projects inside a triangle of three organizational paradoxes and see how strongly each paradox is affected.
 
@@ -26,9 +26,11 @@ src/
 │   ├── Footer.tsx          # Attribution footer
 │   ├── ThemeToggle.tsx     # Dark/Light mode toggle (localStorage + system pref)
 │   ├── Triangle.tsx        # Interactive SVG triangle with drag & drop
+│   ├── EditableLabel.tsx   # Inline-editable text labels (foreignObject in SVG)
 │   ├── AddProject.tsx      # Project creation form with color picker
 │   ├── ProjectList.tsx     # Scrollable list of placed projects
-│   └── AnalysisPanel.tsx   # Barycentric analysis + heat level for selected project
+│   ├── AnalysisPanel.tsx   # Barycentric analysis + heat level for selected project
+│   └── ChatPanel.tsx       # KI-Sparring chat UI placeholder with dummy bot responses
 ├── utils/
 │   └── triangle.ts         # Math: barycentric coords, point-in-triangle, heat levels
 ├── types.ts                # Shared TypeScript interfaces
@@ -47,9 +49,16 @@ Linear.app-inspired, minimal design with dark (default) and light modes.
 - 150ms ease transitions
 - Accent: `#2F779E` (Cerulean Blue)
 
+## Key Features
+
+- **Editable pole labels**: Click any vertex label (name or subtitle) to edit inline via foreignObject input
+- **Chat UI placeholder**: KI-Sparring panel with mock bot responses (real AI integration planned)
+- **Drag & drop**: Placed projects can be repositioned within the triangle
+- **Barycentric analysis**: Real-time percentage breakdown per pole + heat level
+
 ## Triangle Vertices
 
-| Vertex | Position | Color | Label |
+| Vertex | Position | Color | Default Label |
 |---|---|---|---|
 | A (top) | (0, -210) | #185FA5 | Entscheidungsgrundlagen |
 | B (bottom-right) | (242, 121) | #993C1D | Zurechnung |
@@ -57,6 +66,6 @@ Linear.app-inspired, minimal design with dark (default) and light modes.
 
 ## Planned Features
 
-- AI chat integration for paradox analysis
+- AI chat integration for paradox analysis (replacing current placeholder)
 - Difference visualization (before/after comparisons)
 - PNG export of triangle state
